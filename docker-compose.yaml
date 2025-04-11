@@ -1,0 +1,23 @@
+services:
+  docllm:
+    image: ghcr.io/hoeflechner/docllm:main
+    container_name: docllm
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    volumes:
+      - db:/chromadb
+      - ./testfiles:/static:ro
+    environment:
+      - STREAMLIT_SERVER_ENABLE_STATIC_SERVING=true
+      - IMPORT_PATH=/static/
+      - ORIG_URL=app/static
+      - OLLAMA_URL=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+
+volumes:
+  db:
