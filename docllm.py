@@ -1,16 +1,15 @@
-import base64
+import os
 import sys
 import hashlib
 import glob
 import mimetypes
 import logging
+from dotenv import load_dotenv
 from pathlib import Path
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import os
 from langchain_core.prompts import ChatPromptTemplate
-from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 from langchain_ollama import OllamaEmbeddings
 from langchain_core.output_parsers import StrOutputParser
