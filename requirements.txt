@@ -1,8 +1,6 @@
 streamlit
 PyPDF2
 spacy
-faiss-cpu
-faiss-gpu
 ollama
 langchain
 langchain_core
@@ -11,6 +9,5 @@ langchain_ollama
 langchain-fireworks
 langchain-text-splitters
 chromadb
-hashlib
 dotenv
 PyCryptodome

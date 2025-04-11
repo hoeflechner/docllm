@@ -21,7 +21,7 @@ OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'qwen2.5-coder')
 OLLAMA_EMBEDDING_MODEL = os.getenv(
     'OLLAMA_EMBEDDING_MODEL', 'snowflake-arctic-embed2')
-IMPORT_PATH = os.getenv('IMPORT_PATH', 'testfiles')
+IMPORT_PATH = os.getenv('IMPORT_PATH', 'testfiles/**')
 
 def embed(text):
     if st.session_state.get("embeddings",False):
@@ -130,7 +130,7 @@ def get_response(user_query, chat_history):
     context = ""
 
     for doc in st.session_state.documents.values():
-        print(f"loading from {doc['metadatas']['filename']}")
+        print(f"context from {doc['metadatas']['filename']}")
         st.session_state.documents[doc["id"]] = doc
         context += doc["page_content"]+" \n"
     
@@ -179,7 +179,10 @@ def main():
         ]
 
     if "imported" not in st.session_state:
-        import_glob(IMPORT_PATH)
+        print(f"starting import from {IMPORT_PATH}")
+        import_glob(IMPORT_PATH+"/**")
+        print("import done")
+
         st.session_state.imported=True
 
     # conversation
@@ -216,6 +219,5 @@ def main():
 
 
 if __name__ == "__main__":
-    with st.spinner("importing Files..."):
-        import_glob(IMPORT_PATH)
+    import_glob(IMPORT_PATH)
     main()
