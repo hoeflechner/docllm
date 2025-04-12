@@ -1,3 +1,4 @@
+from multiprocessing.pool import ThreadPool
 import os
 import sys
 import hashlib
@@ -6,6 +7,8 @@ import mimetypes
 import logging
 from dotenv import load_dotenv
 from pathlib import Path
+from tqdm import tqdm
+import chromadb
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -16,7 +19,6 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnablePassthrough
 
-import chromadb
 
 load_dotenv()
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
@@ -72,7 +74,9 @@ def get_md5s_from_db():
 
 def import_glob(glob_str):
     files = glob.glob(glob_str,recursive = True)
-    import_files(files)
+    print (f"importing from {glob}: {files}")
+    with ThreadPool() as pool:
+        pool.map(import_file, files)
 
 def describe(file_name):
     llm = ChatOllama(
@@ -101,63 +105,62 @@ def describe(file_name):
         print(e)
         return ""
 
-def import_files(files):
-    for item in files:
-        if isinstance(item, Path) or isinstance(item, str):
-            if os.path.isfile(item):
-                file = open(item, "rb")
-            else:
-                continue
+def import_file(item):
+    if isinstance(item, Path) or isinstance(item, str):
+        if os.path.isfile(item):
+            file = open(item, "rb")
         else:
-            file = item
+            return
+    else:
+        file = item
 
-        print(f"loading {file.name}...")
-        md5 = get_md5(file)
-        if md5 in get_md5s_from_db():
-            print("skipping - already loaded")
-            continue
+    print(f"loading {file.name}...")
+    md5 = get_md5(file)
+    if md5 in get_md5s_from_db():
+        print("skipping - already loaded")
+        return
 
-        text=""
-        filetype = mimetypes.guess_type(file.name)[0]
-        if filetype == 'text/plain':
-            with open(file.name, "r", encoding="utf-8") as f:
-                text = f.read()
-        if filetype == 'text/markdown':
-            with open(file.name, "r", encoding="utf-8") as f:
-                text = f.read()
-        if filetype == 'application/pdf':
-            text = ""
-            pdf_reader = PdfReader(file)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-        if isinstance(filetype,str) and filetype.startswith("image/"):
-            text = ""
-            text = describe(file.name)
+    text=""
+    filetype = mimetypes.guess_type(file.name)[0]
+    if filetype == 'text/plain':
+        with open(file.name, "r", encoding="utf-8") as f:
+            text = f.read()
+    if filetype == 'text/markdown':
+        with open(file.name, "r", encoding="utf-8") as f:
+            text = f.read()
+    if filetype == 'application/pdf':
+        text = ""
+        pdf_reader = PdfReader(file)
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+    if isinstance(filetype,str) and filetype.startswith("image/"):
+        text = ""
+        text = describe(file.name)
 
-        file.close()
+    file.close()
 
-        if text == "":
-            print(f"skipping - could not read {filetype}")
-            continue
+    if text == "":
+        print(f"skipping - could not read {filetype}")
+        return
 
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000, chunk_overlap=200)
-        chunks = text_splitter.split_text(text)
-        # print(pdf)
-        metadata = {"filename": file.name, "md5": md5}
-        metadatas = [metadata for c in chunks]
-        ids=[]
-        for i in range(len(chunks)):
-            ids.append(file.name+"/"+str(i))
-        #ids= [str(hash(c)) for c in chunks]
-        embeddings= [embed(c) for c in chunks]
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000, chunk_overlap=200)
+    chunks = text_splitter.split_text(text)
+    # print(pdf)
+    metadata = {"filename": file.name, "md5": md5}
+    metadatas = [metadata for c in chunks]
+    ids=[]
+    for i in range(len(chunks)):
+        ids.append(file.name+"/"+str(i))
+    #ids= [str(hash(c)) for c in chunks]
+    embeddings= [embed(c) for c in chunks]
 
-        if  embeddings is None or len(embeddings) == 0:
-            print(f"not text in {file.name}")
-            continue
+    if  embeddings is None or len(embeddings) == 0:
+        print(f"not text in {file.name}")
+        return
 
-        db().upsert(documents=chunks, metadatas=metadatas, ids=ids, embeddings=embeddings)
-        print(f"storing {md5}")
+    db().upsert(documents=chunks, metadatas=metadatas, ids=ids, embeddings=embeddings)
+    print(f"storing {file.name}")
  
 def get_response(user_query, chat_history):
     if "documents" not in st.session_state:
