@@ -114,54 +114,57 @@ def import_file(item):
     else:
         file = item
 
-    print(f"loading {file.name}...")
-    md5 = get_md5(file)
-    if md5 in get_md5s_from_db():
-        print("skipping - already loaded")
-        return
+    try:
+        print(f"loading {file.name}...")
+        md5 = get_md5(file)
+        if md5 in get_md5s_from_db():
+            print("skipping - already loaded")
+            return
 
-    text=""
-    filetype = mimetypes.guess_type(file.name)[0]
-    if filetype == 'text/plain':
-        with open(file.name, "r", encoding="utf-8") as f:
-            text = f.read()
-    if filetype == 'text/markdown':
-        with open(file.name, "r", encoding="utf-8") as f:
-            text = f.read()
-    if filetype == 'application/pdf':
-        text = ""
-        pdf_reader = PdfReader(file)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-    if isinstance(filetype,str) and filetype.startswith("image/"):
-        text = ""
-        text = describe(file.name)
+        text=""
+        filetype = mimetypes.guess_type(file.name)[0]
+        if filetype == 'text/plain':
+            with open(file.name, "r", encoding="utf-8") as f:
+                text = f.read()
+        if filetype == 'text/markdown':
+            with open(file.name, "r", encoding="utf-8") as f:
+                text = f.read()
+        if filetype == 'application/pdf':
+            text = ""
+            pdf_reader = PdfReader(file)
+            for page in pdf_reader.pages:
+                text += page.extract_text()
+        if isinstance(filetype,str) and filetype.startswith("image/"):
+            text = ""
+            text = describe(file.name)
 
-    file.close()
+        file.close()
 
-    if text == "":
-        print(f"skipping - could not read {filetype}")
-        return
+        if text == "":
+            print(f"skipping - could not read {filetype}")
+            return
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000, chunk_overlap=200)
-    chunks = text_splitter.split_text(text)
-    # print(pdf)
-    metadata = {"filename": file.name, "md5": md5}
-    metadatas = [metadata for c in chunks]
-    ids=[]
-    for i in range(len(chunks)):
-        ids.append(file.name+"/"+str(i))
-    #ids= [str(hash(c)) for c in chunks]
-    embeddings= [embed(c) for c in chunks]
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000, chunk_overlap=200)
+        chunks = text_splitter.split_text(text)
+        # print(pdf)
+        metadata = {"filename": file.name, "md5": md5}
+        metadatas = [metadata for c in chunks]
+        ids=[]
+        for i in range(len(chunks)):
+            ids.append(file.name+"/"+str(i))
+        #ids= [str(hash(c)) for c in chunks]
+        embeddings= [embed(c) for c in chunks]
 
-    if  embeddings is None or len(embeddings) == 0:
-        print(f"not text in {file.name}")
-        return
+        if  embeddings is None or len(embeddings) == 0:
+            print(f"not text in {file.name}")
+            return
 
-    db().upsert(documents=chunks, metadatas=metadatas, ids=ids, embeddings=embeddings)
-    print(f"storing {file.name}")
- 
+        db().upsert(documents=chunks, metadatas=metadatas, ids=ids, embeddings=embeddings)
+        print(f"storing {file.name}")
+    except Exception as e:
+        print(e)
+        
 def get_response(user_query, chat_history):
     if "documents" not in st.session_state:
         st.session_state.documents = {}

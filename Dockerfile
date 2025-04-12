@@ -13,4 +13,4 @@ RUN python -m pip install -r requirements.txt
 COPY config.toml config.toml
 COPY docllm.py docllm.py 
 
-CMD ["streamlit", "run", "docllm.py"]
+CMD ["streamlit", "run", "--server.enableStaticServing=true", "docllm.py"]
