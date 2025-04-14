@@ -12,3 +12,4 @@ chromadb
 dotenv
 PyCryptodome
 tqdm
+python-docx

@@ -7,18 +7,16 @@ import mimetypes
 import logging
 from dotenv import load_dotenv
 from pathlib import Path
-from tqdm import tqdm
 import chromadb
 import streamlit as st
 from PyPDF2 import PdfReader
+from docx import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
 from langchain_ollama import OllamaEmbeddings
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.runnables import RunnablePassthrough
-
 
 load_dotenv()
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
@@ -137,7 +135,10 @@ def import_file(item):
         if isinstance(filetype,str) and filetype.startswith("image/"):
             text = ""
             text = describe(file.name)
-
+        if filetype == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+            doc= Document(item)
+            text="\n".join([p.text for p in doc.paragraphs])
+            
         file.close()
 
         if text == "":
