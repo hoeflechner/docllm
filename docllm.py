@@ -281,7 +281,7 @@ def flask():
         #print(context)
         return jsonify({"query": query, "context": context})
     
-    app.run()
+    app.run(host='0.0.0.0')
 
 
 if __name__ == "__main__":
