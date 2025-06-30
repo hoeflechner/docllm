@@ -2,3 +2,6 @@
 .venv/**
 .vscode/**
 chromadb/** 
+__pycache__/**
+*.log
+*.tmp

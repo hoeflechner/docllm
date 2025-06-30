@@ -165,13 +165,10 @@ def import_file(item):
         print(f"storing {file.name}")
     except Exception as e:
         print(e)
-        
-def get_response(user_query, chat_history):
+
+def get_context(user_query):
     if "documents" not in st.session_state:
         st.session_state.documents = {}
-
-    print(f"User input: {user_query}")
-
     data = db().query([embed(user_query)],n_results=3)
     for i,id in enumerate(data["ids"][0]):
         doc={"id":id, "page_content":data["documents"][0][i], "metadatas":data["metadatas"][0][i]}
@@ -192,6 +189,15 @@ def get_response(user_query, chat_history):
     for doc in st.session_state.documents.values():
         st.session_state.documents[doc["id"]] = doc
         context += doc["page_content"]+" \n"
+    return context
+
+def get_response(user_query, chat_history):
+    if "documents" not in st.session_state:
+        st.session_state.documents = {}
+
+    print(f"User input: {user_query}")
+
+    context=get_context(user_query)
     
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -253,7 +259,31 @@ def main():
                 user_query, st.session_state.chat_history))
 
         st.session_state.chat_history.append(AIMessage(content=response))
+
+def flask():
+    from flask import Flask, request, jsonify
+
+    app = Flask(__name__)
+
+    @app.route('/')
+    def index():
+        return 'Hello, World!'
+
+    @app.route("/query", methods=['POST'])
+    def rag():
+        f = request.form
+        #print(f)
+        j=request.get_json()
+        #print(j)
+        query=f.get("query",j.get("query",""))
+        #print(query)
+        context=get_context(query)
+        #print(context)
+        return jsonify({"query": query, "context": context})
     
+    app.run()
+
+
 if __name__ == "__main__":
     for name, l in logging.root.manager.loggerDict.items():
         if "streamlit" in name:
@@ -261,4 +291,7 @@ if __name__ == "__main__":
     if st.runtime.exists():
         main()
     else:
+       if sys.argv.pop()=="flask":
+           flask()
+           exit(0)
        import_glob(f"{IMPORT_PATH}/**")

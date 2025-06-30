@@ -13,3 +13,4 @@ dotenv
 PyCryptodome
 tqdm
 python-docx
+Flask
