@@ -169,7 +169,7 @@ def import_file(item):
 def get_context(user_query):
     if "documents" not in st.session_state:
         st.session_state.documents = {}
-    data = db().query([embed(user_query)],n_results=3)
+    data = db().query([embed(user_query)],n_results=10)
     for i,id in enumerate(data["ids"][0]):
         doc={"id":id, "page_content":data["documents"][0][i], "metadatas":data["metadatas"][0][i]}
         st.session_state.documents[id] = doc
